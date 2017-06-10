@@ -8,6 +8,9 @@ import android.os.Message;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearSnapHelper;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SnapHelper;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,14 +18,23 @@ import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity{
+import java.util.ArrayList;
+import java.util.List;
+
+import travel.ithaka.android.horizontalpickerlib.PickerLayoutManager;
+
+public class MainActivity extends AppCompatActivity {
 
     int time=30;
     double maxHeight,increment ,height;
     TextView textViewCounter;
     RelativeLayout relativeLayoutBackground,relativeLayoutForeground;
     Button button;
+    RecyclerView recyclerView;
+    PickerAdapter adapter;
+    PickerLayoutManager pickerLayoutManager;
 
     public static int pxToDp(int px) {
         return (int) (px / Resources.getSystem().getDisplayMetrics().density);
@@ -35,10 +47,16 @@ public class MainActivity extends AppCompatActivity{
         @Override
         public void handleMessage(Message msg) {
             Log.d("handler",msg.arg1+"");
-            if(msg.arg1==time)
+            if(msg.arg1==time) {
                 button.setVisibility(View.INVISIBLE);
+                textViewCounter.setVisibility(View.VISIBLE);
+                recyclerView.setVisibility(View.INVISIBLE);
+            }
             else if(msg.arg1==0) {
                 button.setVisibility(View.VISIBLE);
+                textViewCounter.setVisibility(View.INVISIBLE);
+                recyclerView.setVisibility(View.VISIBLE);
+
             }
             counterRefresh(msg.arg1);
         }
@@ -54,10 +72,17 @@ public class MainActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         init();
+        pickerLayoutManager.setOnScrollStopListener(new PickerLayoutManager.onScrollStopListener() {
+            @Override
+            public void selectedView(View view) {
+                time=Integer.parseInt(((TextView)view).getText().toString());
+            }
+        });
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 swapBackground(true);
+
                 final Runnable runnableBackground= new Runnable() {
                     @Override
                     public void run() {
@@ -89,7 +114,7 @@ public class MainActivity extends AppCompatActivity{
                     }
                 };
 
-
+                increment = dpToPx((int)maxHeight)/time;
                 new Thread(runnableCounter).start();
                 Log.d("tag","onclick");
                 //reset code
@@ -106,7 +131,10 @@ public class MainActivity extends AppCompatActivity{
         relativeLayoutForeground = (RelativeLayout)findViewById(R.id.rl_foreground);
         button =(Button)findViewById(R.id.button);
         textViewCounter = (TextView)findViewById(R.id.tv_counter);
+        recyclerView = (RecyclerView)findViewById(R.id.rv);
+
         textViewCounter.setText(String.valueOf(time));
+
         relativeLayoutBackground.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
@@ -117,10 +145,21 @@ public class MainActivity extends AppCompatActivity{
                     relativeLayoutBackground.getViewTreeObserver().removeGlobalOnLayoutListener(this);
                 }
                 maxHeight = relativeLayoutBackground.getHeight();
-                increment = dpToPx((int)maxHeight)/time;
                 height=0;
             }
         });
+
+        pickerLayoutManager = new PickerLayoutManager(this, PickerLayoutManager.HORIZONTAL, false);
+        pickerLayoutManager.setChangeAlpha(true);
+        pickerLayoutManager.setScaleDownBy(0.6f);
+        pickerLayoutManager.setScaleDownDistance(0.8f);
+
+        adapter = new PickerAdapter(this, getData(100), recyclerView);
+        SnapHelper snapHelper = new LinearSnapHelper();
+        snapHelper.attachToRecyclerView(recyclerView);
+        recyclerView.setLayoutManager(pickerLayoutManager);
+        recyclerView.setAdapter(adapter);
+        recyclerView.smoothScrollToPosition(3);
     }
     void swapBackground(Boolean on){
         if(on){
@@ -146,5 +185,12 @@ public class MainActivity extends AppCompatActivity{
         height ++;
         Log.d("height","height:"+height+" Increment:"+increment);
         relativeLayoutForeground.setLayoutParams(new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,  pxToDp((int)height)));
+    }
+    public List<String> getData(int count) {
+        List<String> data = new ArrayList<>();
+        for (int i = 10; i <= count; i+=10) {
+            data.add(String.valueOf(i));
+        }
+        return data;
     }
 }
